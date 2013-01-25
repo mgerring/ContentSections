@@ -10,3 +10,7 @@
  * @version 1.0.0
  * @since 1.0.0
  */
+
+function print_content_sections_toc() {
+	echo ContentSections()->get_the_toc();
+}

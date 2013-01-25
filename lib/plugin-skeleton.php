@@ -4,14 +4,6 @@
  * 
  * This is meant to act as a template for creating a new WordPress plugin.
  * 
- * USAGE:
- * 1) Replace this template description area with a description of your plugin
- * 2) Update the title of this plugin
- * 3) Update the plugin meta in the comment below to describe your plugin
- * 4) Change the name of all instances of the PluginTemplate class to describe your plugin
- * 5) Change the name of the PluginTemplate::friendly_name and PluginTemplate::namespace to describe your plugin
- * 6) Change the name of all instances of PLUGINTEMPLATE in the /lib/constants.php file to match your plugin's new class name
- * 
  * @package PluginTemplate
  * 
  * @global    object    $wpdb
@@ -44,17 +36,20 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-// Include constants file
-require_once( dirname( __FILE__ ) . '/lib/constants.php' );
-
-class PluginTemplate {
-	var $namespace = "plugin-template";
+class plugin_skeleton {
 	var $friendly_name = "Plugin Template";
-	var $version = "1.0.0";
+	var $namespace = "plugin-template";
+	var $version = "0.1";
+	public static $const;
+	public static $instance;
 	
 	// Default plugin options
-	var $defaults = array(
-		'option_1' => "foobar"
+	var $settings = array(
+		array(	'name'=>'Example Setting',
+				'slug'=>'example_setting',
+				'type'=>'text', 				// can be 'text', 'checkbox', 'textarea'
+				'default'=>'Example Default'	// enter false for no default
+		),
 	);
 	
 	/**
@@ -64,24 +59,24 @@ class PluginTemplate {
 	 * @uses PluginTemplate::wp_register_scripts()
 	 * @uses PluginTemplate::wp_register_styles()
 	 */
-	function __construct() {
-		// Name of the option_value to store plugin options in
-		$this->option_name = '_' . $this->namespace . '--options';
-		
+	function __construct($cfg = null) {
+		if($cfg)
+			self::$const = $cfg;
 		// Load all library files used by this plugin
-		$libs = glob( PLUGINTEMPLATE_DIRNAME . '/lib/*.php' );
+		
+		$libs = glob( constant(self::$const . '_PATH') . '/lib/*.php' );
+		
 		foreach( $libs as $lib ) {
 			include_once( $lib );
 		}
-		
 		/**
 		 * Make this plugin available for translation.
 		 * Translations can be added to the /languages/ directory.
 		 */
-		load_theme_textdomain( $this->namespace, PLUGINTEMPLATE_DIRNAME . '/languages' );
+		load_theme_textdomain( $this->namespace, constant(self::$const . '_PATH') . '/languages' );
 
 		// Add all action, filter and shortcode hooks
-		$this->_add_hooks();
+		$this->add_hooks();
 	}
 	
 	/**
@@ -89,52 +84,15 @@ class PluginTemplate {
 	 * 
 	 * Place all add_action, add_filter, add_shortcode hook-ins here
 	 */
-	private function _add_hooks() {
-		// Options page for configuration
-		add_action( 'admin_menu', array( &$this, 'admin_menu' ) );
-		// Route requests for form processing
-		add_action( 'init', array( &$this, 'route' ) );
-		
+	public function add_hooks() {
 		// Add a settings link next to the "Deactivate" link on the plugin listing page
 		add_filter( 'plugin_action_links', array( &$this, 'plugin_action_links' ), 10, 2 );
-		
 		// Register all JavaScripts for this plugin
 		add_action( 'init', array( &$this, 'wp_register_scripts' ), 1 );
 		// Register all Stylesheets for this plugin
 		add_action( 'init', array( &$this, 'wp_register_styles' ), 1 );
-	}
-	
-	/**
-	 * Process update page form submissions
-	 * 
-	 * @uses PluginTemplate::sanitize()
-	 * @uses wp_redirect()
-	 * @uses wp_verify_nonce()
-	 */
-	private function _admin_options_update() {
-		// Verify submission for processing using wp_nonce
-		if( wp_verify_nonce( $_REQUEST['_wpnonce'], "{$this->namespace}-update-options" ) ) {
-			$data = array();
-			/**
-			 * Loop through each POSTed value and sanitize it to protect against malicious code. Please
-			 * note that rich text (or full HTML fields) should not be processed by this function and 
-			 * dealt with directly.
-			 */
-			foreach( $_POST['data'] as $key => $val ) {
-				$data[$key] = $this->_sanitize( $val );
-			}
-			
-			/**
-			 * Place your options processing and storage code here
-			 */
-			
-			// Update the options value with the data submitted
-			update_option( $this->option_name, $data );
-			
-			// Redirect back to the options page with the message flag to show the saved message
-			wp_safe_redirect( $_REQUEST['_wp_http_referer'] . '&message=1' );
-			exit;
-		}
+		// Options page for configuration
+		add_action( 'admin_menu', array( &$this, 'admin_menu' ) );
 	}
 	
 	/**
@@ -184,7 +142,7 @@ class PluginTemplate {
 	 */
 	function admin_menu() {
 		$page_hook = add_options_page( $this->friendly_name, $this->friendly_name, 'administrator', $this->namespace, array( &$this, 'admin_options_page' ) );
-		
+		register_setting($this->namespace.'_options', $this->namespace);
 		// Add print scripts and styles action based off the option page hook
 		add_action( 'admin_print_scripts-' . $page_hook, array( &$this, 'admin_print_scripts' ) );
 		add_action( 'admin_print_styles-' . $page_hook, array( &$this, 'admin_print_styles' ) );
@@ -202,11 +160,11 @@ class PluginTemplate {
 			wp_die( 'You do not have sufficient permissions to access this page' );
 		}
 		
-		$page_title = $this->friendly_name . ' Options';
-		$namespace = $this->namespace;
-		$settings = $this->settings;
+		$page_title 	= $this->friendly_name . ' Options';
+		$namespace 		= $this->namespace;
+		$settings 		= $this->settings;
 		
-		include( PLUGINTEMPLATE_DIRNAME . "/views/options.php" );
+		include( constant(self::$const . '_PATH') . "/views/options.php" );
 	}
 	
 	/**
@@ -248,28 +206,31 @@ class PluginTemplate {
 	function get_option( $option_name ) {
 		// Load option values if they haven't been loaded already
 		if( !isset( $this->options ) || empty( $this->options ) ) {
-			$this->options = get_option( $this->option_name, $this->defaults );
+			$defaults = array();
+	    	foreach($this->settings as $setting) {
+	    		if ( $setting['default'] != false )
+	    			$defaults[$setting['slug']] = $setting['default'];
+	    	}
+			$this->options =  wp_parse_args(get_option($this->namespace), $defaults);
 		}
 		
-		if( isset( $this->options[$option_name] ) ) {
-			return $this->options[$option_name];    // Return user's specified option value
-		} elseif( isset( $this->defaults[$option_name] ) ) {
-			return $this->defaults[$option_name];   // Return default option value
-		}
+		if( isset( $this->options[$option_name] ) )
+			return $this->options[$option_name];
+
 		return false;
 	}
 	
 	/**
-	 * Initialization function to hook into the WordPress init action
+	 * Initialization function to return the plugin singleton via function call,
+	 * and set the whole thing up in the first place.
 	 * 
-	 * Instantiates the class on a global variable and sets the class, actions
-	 * etc. up for use.
 	 */
-	static function instance() {
-		global $PluginTemplate;
-		
-		// Only instantiate the Class if it hasn't been already
-		if( !isset( $PluginTemplate ) ) $PluginTemplate = new PluginTemplate();
+	public static function instance($cfg = null) {
+			if ( ! isset( self::$instance ) ) {
+				self::$instance = new self($cfg);
+				return;
+			}
+			return self::$instance;
 	}
 	
 	/**
@@ -282,7 +243,7 @@ class PluginTemplate {
 	 * @param string $file The name of the file being processed in the filter
 	 */
 	function plugin_action_links( $links, $file ) {
-		if( $file == plugin_basename( PLUGINTEMPLATE_DIRNAME . '/' . basename( __FILE__ ) ) ) {
+		if( $file == plugin_basename( constant(self::$const . '_PATH') . '/' . basename( __FILE__ ) ) ) {
 			$old_links = $links;
 			$new_links = array(
 				"settings" => '<a href="options-general.php?page=' . $this->namespace . '">' . __( 'Settings' ) . '</a>'
@@ -294,45 +255,13 @@ class PluginTemplate {
 	}
 	
 	/**
-	 * Route the user based off of environment conditions
-	 * 
-	 * This function will handling routing of form submissions to the appropriate
-	 * form processor.
-	 * 
-	 * @uses PluginTemplate::_admin_options_update()
-	 */
-	function route() {
-		$uri = $_SERVER['REQUEST_URI'];
-		$protocol = isset( $_SERVER['HTTPS'] ) ? 'https' : 'http';
-		$hostname = $_SERVER['HTTP_HOST'];
-		$url = "{$protocol}://{$hostname}{$uri}";
-		$is_post = (bool) ( strtoupper( $_SERVER['REQUEST_METHOD'] ) == "POST" );
-		
-		// Check if a nonce was passed in the request
-		if( isset( $_REQUEST['_wpnonce'] ) ) {
-			$nonce = $_REQUEST['_wpnonce'];
-			
-			// Handle POST requests
-			if( $is_post ) {
-				if( wp_verify_nonce( $nonce, "{$this->namespace}-update-options" ) ) {
-					$this->_admin_options_update();
-				}
-			} 
-			// Handle GET requests
-			else {
-				
-			}
-		}
-	}
-	
-	/**
 	 * Register scripts used by this plugin for enqueuing elsewhere
 	 * 
 	 * @uses wp_register_script()
 	 */
 	function wp_register_scripts() {
 		// Admin JavaScript
-		wp_register_script( "{$this->namespace}-admin", PLUGINTEMPLATE_URLPATH . "/js/admin.js", array( 'jquery' ), $this->version, true );
+		wp_register_script( "{$this->namespace}-admin", constant(self::$const . '_URL') . "/js/admin.js", array( 'jquery' ), $this->version, true );
 	}
 	
 	/**
@@ -342,12 +271,9 @@ class PluginTemplate {
 	 */
 	function wp_register_styles() {
 		// Admin Stylesheet
-		wp_register_style( "{$this->namespace}-admin", PLUGINTEMPLATE_URLPATH . "/css/admin.css", array(), $this->version, 'screen' );
+		wp_register_style( "{$this->namespace}-admin", constant(self::$const . '_URL') . "/css/admin.css", array(), $this->version, 'screen' );
 	}
 }
-if( !isset( $PluginTemplate ) ) {
-	PluginTemplate::instance();
-}
 
-register_activation_hook( __FILE__, array( 'PluginTemplate', 'activate' ) );
-register_deactivation_hook( __FILE__, array( 'PluginTemplate', 'deactivate' ) );
+//register_activation_hook( __FILE__, array( 'PluginTemplate', 'activate' ) );
+//register_deactivation_hook( __FILE__, array( 'PluginTemplate', 'deactivate' ) );
