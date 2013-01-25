@@ -19,6 +19,9 @@ if (!class_exists('content_sections')){
 			parent::__construct($cfg);
 		}
 
+		/**
+	 	* THERE CAN BE ONLY ONE
+	 	*/
 		public static function instance($cfg = null) {
 			if ( ! isset( self::$instance ) ) {
 				self::$instance = new self($cfg);
@@ -27,18 +30,36 @@ if (!class_exists('content_sections')){
 			return self::$instance;
 		}
 
+		/**
+	 	* Add in various hooks
+	 	* 
+	 	* Place all add_action, add_filter, add_shortcode hook-ins here
+	 	*/
 		function add_hooks() {
-			parent::add_hooks();
+			// Since we don't have any useful options yet, no need to
+			// bother with the parent hooks.
+			//parent::add_hooks();
 			add_shortcode( 'section', array(&$this, 'section_shortcode') );
 			add_filter( 'the_content', array(&$this, 'add_toc_shortcode'), 12 );
 			add_action( 'wp_enqueue_scripts', array(&$this, 'register_scripts'));
 		}
 
+		/**
+		 * Registers jQuery Waypoints for use by theme authors if they're so inclined.
+		 *
+		 * @todo turn this off by default and make it dependent on an option
+		 */
 		public function register_scripts() {
 			//You can call these from your view templates if you need them
 			wp_register_script( 'jquery-waypoints', CONTENT_SECTIONS_URL . '/js/waypoints.min.js', array('jquery'), '2.0.1', true );
 		}
 
+		/**
+		 * Loads and rerturns parsed template contents. Allows theme authors to
+		 * overload tempaltes used in shortcodes.
+		 * 
+		 * @global $posts, $post, $wp_did_header, $wp_query, $wp_rewrite, $wpdb, $wp_version, $wp, $id, $comment, $user_ID
+		 */
 		public function parse_template( $name , $context = null ) {
 			//Hat Tip to WordPress codex: http://codex.wordpress.org/Function_Reference/load_template
 
@@ -66,6 +87,12 @@ if (!class_exists('content_sections')){
 			return $parsed_template; 
 		}
 
+		/**
+		 * Shortcode handler for the section links.
+		 * 
+		 * @global $post
+		 * @uses content_sections::parse_template
+		 */
 		public function section_shortcode($atts, $content = null) {
 			global $post;
 			
@@ -104,7 +131,7 @@ if (!class_exists('content_sections')){
 		}
 
 		/**
-		 * Get (and create, if necessary) the table of contents.
+		 * Get (and create, if necessary) the table of contents array.
 		 * 
 		 * @uses content_sections::do_shortcode_by_tag
 		 * @global $post 
@@ -125,10 +152,10 @@ if (!class_exists('content_sections')){
 		}
 
 		/**
-		 * Get (and create, if necessary) the table of contents.
+		 * Create and return the table of contents display.
 		 * 
-		 * @uses content_sections::get_toc
-		 * @global $post 
+		 * @uses content_sections::get_post_content_sections
+		 * @uses content_sections::parse_template
 		 */
 		public function get_the_toc($context = array()) {
 			$toc = $this->get_post_content_sections();
@@ -136,12 +163,20 @@ if (!class_exists('content_sections')){
 			return $this->parse_template('content-section-toc', $context);
 		}
 
+		/**
+		 * Hack to make TOC shortcode run at priority 12
+		 * 
+		 */
 		public function add_toc_shortcode($content) {
 			add_shortcode( 'section-toc', array($this,'toc_shortcode') );
 			$content = do_shortcode($content,'section-toc');
 			return $content;
 		}
 
+		/**
+		 * TOC shortcode handler
+		 * 
+		 */
 		public function toc_shortcode($atts, $content = null) {
 			//Eventually the atts will do something, idkwtf
 			$atts['content'] = $content;

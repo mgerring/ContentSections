@@ -1,8 +1,8 @@
 <?php
 /*
 Plugin Name: Content Sections
-Plugin URI: http://github.com/mgerring/WP-Skeleton-Plugin
-Description: Parses a shortcode in your content to produce an anchor link menu and stuff
+Plugin URI: http://github.com/mgerring/Content-Sections
+Description: Parses shortcodes in your content to produce an anchor link menu. Allows theme authors to overload the template for both the sections and the table of contents. Registers an include for waypoints.js in case theme authors want to use it.
 Version: 0.1
 Author: Matthew Gerring
 Author URI: http://matthewgerring.com
