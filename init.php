@@ -6,7 +6,7 @@ Description: Parses shortcodes in your content to produce an anchor link menu. A
 Version: 0.1
 Author: Matthew Gerring
 Author URI: http://matthewgerring.com
-License: GPLv2
+License: GPLv3
 */
 
 // If you're lazy or in a hurry, you can set everything up this way.
